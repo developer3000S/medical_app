@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+
+{% block title %}
+{% if medicine %}Редактирование препарата{% else %}Добавление препарата{% endif %} - Медицинская информационная система
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2 class="mb-4">
+        {% if medicine %}Редактирование препарата{% else %}Добавление препарата{% endif %}
+    </h2>
+
+    <form method="POST">
+        <div class="row">
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="smmn_node_code" class="form-label">Код узла СМНН</label>
+                    <input type="text" class="form-control" id="smmn_node_code" name="smmn_node_code" 
+                           value="{% if medicine %}{{ medicine.smmn_node_code }}{% endif %}" required>
+                    <div class="form-text">Например: C09AA01</div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="section" class="form-label">Раздел</label>
+                    <input type="text" class="form-control" id="section" name="section" 
+                           value="{% if medicine %}{{ medicine.section }}{% endif %}" required>
+                    <div class="form-text">Например: Сердечно-сосудистые препараты</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="standardized_mnn" class="form-label">Стандартизированное МНН</label>
+                    <input type="text" class="form-control" id="standardized_mnn" name="standardized_mnn" 
+                           value="{% if medicine %}{{ medicine.standardized_mnn }}{% endif %}" required>
+                    <div class="form-text">Например: Эналаприл</div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="trade_name_vk" class="form-label">Торговое наименование ВК</label>
+                    <input type="text" class="form-control" id="trade_name_vk" name="trade_name_vk" 
+                           value="{% if medicine %}{{ medicine.trade_name_vk }}{% endif %}" required>
+                    <div class="form-text">Например: Эналаприл-Акрихин</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-4">
+                <div class="mb-3">
+                    <label for="standardized_dosage_form" class="form-label">Стандартизированная лекарственная форма</label>
+                    <input type="text" class="form-control" id="standardized_dosage_form" name="standardized_dosage_form" 
+                           value="{% if medicine %}{{ medicine.standardized_dosage_form }}{% endif %}" required>
+                    <div class="form-text">Например: таблетки</div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="mb-3">
+                    <label for="standardized_dosage" class="form-label">Стандартизированная лекарственная доза</label>
+                    <input type="text" class="form-control" id="standardized_dosage" name="standardized_dosage" 
+                           value="{% if medicine %}{{ medicine.standardized_dosage }}{% endif %}" required>
+                    <div class="form-text">Например: 10 мг</div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="mb-3">
+                    <label for="packaging" class="form-label">Фасовка</label>
+                    <input type="number" class="form-control" id="packaging" name="packaging" 
+                           value="{% if medicine %}{{ medicine.packaging }}{% endif %}" min="1" required>
+                    <div class="form-text">Количество единиц в упаковке</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="characteristic" class="form-label">Характеристика</label>
+                    <input type="text" class="form-control" id="characteristic" name="characteristic" 
+                           value="{% if medicine %}{{ medicine.characteristic }}{% endif %}">
+                    <div class="form-text">Например: покрытые пленочной оболочкой</div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="price" class="form-label">Цена (руб.)</label>
+                    <input type="number" class="form-control" id="price" name="price" 
+                           step="0.01" min="0" 
+                           value="{% if medicine %}{{ medicine.price }}{% endif %}" required>
+                    <div class="form-text">Цена за упаковку в рублях</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="mb-3">
+            <button type="submit" class="btn btn-primary">
+                {% if medicine %}Обновить препарат{% else %}Добавить препарат{% endif %}
+            </button>
+            <a href="{{ url_for("medicines") }}" class="btn btn-secondary">Отмена</a>
+        </div>
+    </form>
+</div>
+{% endblock %}
+

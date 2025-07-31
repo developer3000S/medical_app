@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+
+{% block title %}Главная - Медицинская информационная система{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">Медицинская информационная система</h1>
+        <p class="lead">Система автоматизации расчёта, учёта и отслеживания назначения и фактической выдачи лекарственных препаратов пациентам</p>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-6 col-lg-4 mb-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title">
+                    <i class="fas fa-users"></i> Пациенты
+                </h5>
+                <p class="card-text">Управление базой данных пациентов: регистрация, редактирование, поиск и удаление записей.</p>
+                <a href="{{ url_for('patients') }}" class="btn btn-primary">Перейти</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6 col-lg-4 mb-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title">
+                    <i class="fas fa-pills"></i> Медицинские препараты
+                </h5>
+                <p class="card-text">Каталог лекарственных препаратов с полной информацией по СМНН, ценам и характеристикам.</p>
+                <a href="{{ url_for('medicines') }}" class="btn btn-primary">Перейти</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6 col-lg-4 mb-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title">
+                    <i class="fas fa-prescription"></i> Назначения
+                </h5>
+                <p class="card-text">Учёт назначений лекарственных препаратов пациентам с указанием дат и количества.</p>
+                <a href="{{ url_for('prescriptions') }}" class="btn btn-primary">Перейти</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6 col-lg-4 mb-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title">
+                    <i class="fas fa-hand-holding-medical"></i> Фактические выдачи
+                </h5>
+                <p class="card-text">Регистрация фактических выдач препаратов пациентам для контроля остатков.</p>
+                <a href="{{ url_for('dispensings') }}" class="btn btn-primary">Перейти</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6 col-lg-4 mb-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title">
+                    <i class="fas fa-chart-bar"></i> Отчёты
+                </h5>
+                <p class="card-text">Сводные отчёты по препаратам с расчётом потребности и экспортом данных.</p>
+                <a href="{{ url_for('reports') }}" class="btn btn-primary">Перейти</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6 col-lg-4 mb-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title">
+                    <i class="fas fa-info-circle"></i> Информация
+                </h5>
+                <p class="card-text">Система разработана для автоматизации работы медперсонала с лекарственными препаратами.</p>
+                <div class="mt-auto">
+                    <small class="text-muted">Версия 1.0</small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-5">
+    <div class="col-12">
+        <div class="alert alert-info">
+            <h5><i class="fas fa-lightbulb"></i> Быстрый старт</h5>
+            <ol>
+                <li>Добавьте пациентов в разделе "Пациенты"</li>
+                <li>Внесите информацию о медицинских препаратах</li>
+                <li>Создайте назначения для пациентов</li>
+                <li>Регистрируйте фактические выдачи препаратов</li>
+                <li>Формируйте отчёты для анализа потребности</li>
+            </ol>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+{% endblock %}
+

@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block title %}
+{% if patient %}Редактирование пациента{% else %}Добавление пациента{% endif %} - Медицинская информационная система
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2 class="mb-4">
+        {% if patient %}Редактирование пациента{% else %}Добавление пациента{% endif %}
+    </h2>
+
+    <form method="POST">
+        <div class="mb-3">
+            <label for="fio" class="form-label">ФИО</label>
+            <input type="text" class="form-control" id="fio" name="fio" 
+                   value="{% if patient %}{{ patient.fio }}{% endif %}" required>
+        </div>
+        <div class="mb-3">
+            <label for="birth_year" class="form-label">Год рождения</label>
+            <input type="number" class="form-control" id="birth_year" name="birth_year" 
+                   value="{% if patient %}{{ patient.birth_year }}{% endif %}" min="1900" max="{{ current_year }}" required>
+        </div>
+        <div class="mb-3">
+            <label for="diagnosis" class="form-label">Диагноз</label>
+            <input type="text" class="form-control" id="diagnosis" name="diagnosis" 
+                   value="{% if patient %}{{ patient.diagnosis }}{% endif %}" required>
+        </div>
+        <div class="mb-3">
+            <label for="attending_doctor" class="form-label">Лечащий врач</label>
+            <input type="text" class="form-control" id="attending_doctor" name="attending_doctor" 
+                   value="{% if patient %}{{ patient.attending_doctor }}{% endif %}" required>
+        </div>
+        <div class="mb-3">
+            <button type="submit" class="btn btn-primary">
+                {% if patient %}Обновить пациента{% else %}Добавить пациента{% endif %}
+            </button>
+            <a href="{{ url_for("patients") }}" class="btn btn-secondary">Отмена</a>
+        </div>
+    </form>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const currentYear = new Date().getFullYear();
+    document.getElementById("birth_year").setAttribute("max", currentYear);
+});
+</script>
+{% endblock %}
+

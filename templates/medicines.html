@@ -1,0 +1,197 @@
+{% extends "base.html" %}
+
+{% block title %}Медицинские препараты - Медицинская информационная система{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Медицинские препараты</h1>
+    <a href="{{ url_for('add_medicine') }}" class="btn btn-success">
+        <i class="fas fa-plus"></i> Добавить препарат
+    </a>
+</div>
+
+<div class="row mb-3">
+    <div class="col-md-4">
+        <input type="text" class="form-control" id="searchInput" placeholder="Поиск по названию, МНН или коду...">
+    </div>
+    <div class="col-md-3">
+        <select class="form-select" id="sectionFilter">
+            <option value="">Все разделы</option>
+        </select>
+    </div>
+    <div class="col-md-3">
+        <select class="form-select" id="formFilter">
+            <option value="">Все формы</option>
+        </select>
+    </div>
+    <div class="col-md-2">
+        <button class="btn btn-outline-secondary w-100" onclick="clearFilters()">
+            <i class="fas fa-times"></i> Очистить
+        </button>
+    </div>
+</div>
+
+<div class="table-responsive">
+    <table class="table table-striped table-hover" id="medicinesTable">
+        <thead class="table-dark">
+            <tr>
+                <th>ID</th>
+                <th>Код СМНН</th>
+                <th>Раздел</th>
+                <th>МНН</th>
+                <th>Торговое название</th>
+                <th>Форма</th>
+                <th>Доза</th>
+                <th>Характеристика</th>
+                <th>Фасовка</th>
+                <th>Цена, руб.</th>
+                <th>Действия</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for medicine in medicines %}
+            <tr>
+                <td>{{ medicine.medicine_id }}</td>
+                <td>{{ medicine.smmn_node_code }}</td>
+                <td>{{ medicine.section }}</td>
+                <td>{{ medicine.standardized_mnn }}</td>
+                <td>{{ medicine.trade_name_vk }}</td>
+                <td>{{ medicine.standardized_dosage_form }}</td>
+                <td>{{ medicine.standardized_dosage }}</td>
+                <td>{{ medicine.characteristic or '-' }}</td>
+                <td>{{ medicine.packaging }}</td>
+                <td>{{ "%.2f"|format(medicine.price) }}</td>
+                <td>
+                    <div class="btn-group" role="group">
+                        <a href="{{ url_for('edit_medicine', medicine_id=medicine.medicine_id) }}" 
+                           class="btn btn-sm btn-outline-primary" title="Редактировать">
+                            <i class="fas fa-edit"></i>
+                        </a>
+                        <button type="button" class="btn btn-sm btn-outline-danger" 
+                                onclick="confirmDelete({{ medicine.medicine_id }}, '{{ medicine.standardized_mnn }}')" title="Удалить">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% if not medicines %}
+<div class="text-center mt-5">
+    <div class="alert alert-info">
+        <h4><i class="fas fa-info-circle"></i> Нет данных</h4>
+        <p>В каталоге пока нет медицинских препаратов. Добавьте первый препарат, нажав кнопку "Добавить препарат".</p>
+        <a href="{{ url_for('add_medicine') }}" class="btn btn-success">
+            <i class="fas fa-plus"></i> Добавить препарат
+        </a>
+    </div>
+</div>
+{% endif %}
+
+<!-- Модальное окно подтверждения удаления -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Подтверждение удаления</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Вы уверены, что хотите удалить препарат <strong id="medicineName"></strong>?</p>
+                <p class="text-danger"><small>Это действие нельзя отменить.</small></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <form id="deleteForm" method="POST" style="display: inline;">
+                    <button type="submit" class="btn btn-danger">Удалить</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function confirmDelete(medicineId, medicineName) {
+    document.getElementById('medicineName').textContent = medicineName;
+    document.getElementById('deleteForm').action = '/medicines/delete/' + medicineId;
+    new bootstrap.Modal(document.getElementById('deleteModal')).show();
+}
+
+function clearFilters() {
+    document.getElementById('searchInput').value = '';
+    document.getElementById('sectionFilter').value = '';
+    document.getElementById('formFilter').value = '';
+    filterTable();
+}
+
+function filterTable() {
+    const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+    const sectionFilter = document.getElementById('sectionFilter').value.toLowerCase();
+    const formFilter = document.getElementById('formFilter').value.toLowerCase();
+    const table = document.getElementById('medicinesTable');
+    const rows = table.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
+
+    for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        const code = row.cells[1].textContent.toLowerCase();
+        const section = row.cells[2].textContent.toLowerCase();
+        const mnn = row.cells[3].textContent.toLowerCase();
+        const tradeName = row.cells[4].textContent.toLowerCase();
+        const form = row.cells[5].textContent.toLowerCase();
+
+        const matchesSearch = code.includes(searchTerm) || mnn.includes(searchTerm) || tradeName.includes(searchTerm);
+        const matchesSection = sectionFilter === '' || section.includes(sectionFilter);
+        const matchesForm = formFilter === '' || form.includes(formFilter);
+
+        if (matchesSearch && matchesSection && matchesForm) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    }
+}
+
+// Инициализация фильтров
+document.addEventListener('DOMContentLoaded', function() {
+    // Заполнение списка разделов для фильтра
+    const sectionFilter = document.getElementById('sectionFilter');
+    const formFilter = document.getElementById('formFilter');
+    const sections = new Set();
+    const forms = new Set();
+    const table = document.getElementById('medicinesTable');
+    const rows = table.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
+
+    for (let i = 0; i < rows.length; i++) {
+        const section = rows[i].cells[2].textContent.trim();
+        const form = rows[i].cells[5].textContent.trim();
+        if (section) sections.add(section);
+        if (form) forms.add(form);
+    }
+
+    sections.forEach(section => {
+        const option = document.createElement('option');
+        option.value = section;
+        option.textContent = section;
+        sectionFilter.appendChild(option);
+    });
+
+    forms.forEach(form => {
+        const option = document.createElement('option');
+        option.value = form;
+        option.textContent = form;
+        formFilter.appendChild(option);
+    });
+
+    // Добавление обработчиков событий
+    document.getElementById('searchInput').addEventListener('input', filterTable);
+    document.getElementById('sectionFilter').addEventListener('change', filterTable);
+    document.getElementById('formFilter').addEventListener('change', filterTable);
+});
+</script>
+{% endblock %}
+

@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block title %}
+{% if prescription %}Редактирование назначения{% else %}Добавление назначения{% endif %} - Медицинская информационная система
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2 class="mb-4">
+        {% if prescription %}Редактирование назначения{% else %}Добавление назначения{% endif %}
+    </h2>
+
+    <form method="POST">
+        <div class="row">
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="patient_id" class="form-label">Пациент</label>
+                    <select class="form-select" id="patient_id" name="patient_id" required>
+                        <option value="">Выберите пациента</option>
+                        {% for patient in patients %}
+                        <option value="{{ patient.patient_id }}" 
+                                {% if prescription and prescription.patient_id == patient.patient_id %}selected{% endif %}>
+                            {{ patient.fio }} ({{ patient.diagnosis }})
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="medicine_id" class="form-label">Препарат</label>
+                    <select class="form-select" id="medicine_id" name="medicine_id" required>
+                        <option value="">Выберите препарат</option>
+                        {% for medicine in medicines %}
+                        <option value="{{ medicine.medicine_id }}" 
+                                {% if prescription and prescription.medicine_id == medicine.medicine_id %}selected{% endif %}>
+                            {{ medicine.trade_name_vk }} ({{ medicine.standardized_mnn }}) - {{ medicine.price }} руб.
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="prescription_date" class="form-label">Дата назначения</label>
+                    <input type="date" class="form-control" id="prescription_date" name="prescription_date" 
+                           value="{% if prescription %}{{ prescription.prescription_date }}{% else %}{{ today }}{% endif %}" required>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="quantity_packs" class="form-label">Количество упаковок</label>
+                    <input type="number" class="form-control" id="quantity_packs" name="quantity_packs" 
+                           step="0.1" min="0.1" 
+                           value="{% if prescription %}{{ prescription.quantity_packs }}{% endif %}" required>
+                    <div class="form-text">Укажите количество упаковок препарата</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="mb-3">
+            <button type="submit" class="btn btn-primary">
+                {% if prescription %}Обновить назначение{% else %}Добавить назначение{% endif %}
+            </button>
+            <a href="{{ url_for("prescriptions") }}" class="btn btn-secondary">Отмена</a>
+        </div>
+    </form>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    // Установка текущей даты по умолчанию
+    {% if not prescription %}
+    const today = new Date().toISOString().split("T")[0];
+    document.getElementById("prescription_date").value = today;
+    {% endif %}
+});
+</script>
+{% endblock %}
+
