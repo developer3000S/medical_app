@@ -1,0 +1,181 @@
+{% extends "base.html" %}
+
+{% block title %}Отчёт по пациентам - Медицинская информационная система{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2 class="mb-4">Отчёт по пациентам</h2>
+
+    <!-- Форма фильтров -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Фильтры отчёта</h5>
+        </div>
+        <div class="card-body">
+            <form method="POST">
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="mb-3">
+                            <label for="start_date" class="form-label">Дата начала</label>
+                            <input type="date" class="form-control" id="start_date" name="start_date" 
+                                   value="{% if filters %}{{ filters.start_date }}{% endif %}">
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="mb-3">
+                            <label for="end_date" class="form-label">Дата окончания</label>
+                            <input type="date" class="form-control" id="end_date" name="end_date" 
+                                   value="{% if filters %}{{ filters.end_date }}{% endif %}">
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label for="patient_id" class="form-label">Пациент</label>
+                            <select class="form-select" id="patient_id" name="patient_id">
+                                <option value="">Все пациенты</option>
+                                {% for patient in patients %}
+                                <option value="{{ patient.patient_id }}" 
+                                        {% if filters and filters.patient_id == patient.patient_id %}selected{% endif %}>
+                                    {{ patient.fio }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="mb-3">
+                            <label class="form-label">&nbsp;</label>
+                            <button type="submit" class="btn btn-primary d-block w-100">Сформировать</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Быстрые фильтры по датам -->
+                <div class="row">
+                    <div class="col-12">
+                        <small class="text-muted">Быстрый выбор периода:</small>
+                        {% for key, preset in date_presets.items() %}
+                        <button type="button" class="btn btn-sm btn-outline-secondary ms-1" 
+                                onclick="setDateRange('{{ preset.start }}', '{{ preset.end }}')">
+                            {{ preset.label }}
+                        </button>
+                        {% endfor %}
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {% if report %}
+    <!-- Сводная информация -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title">{{ report.summary.total_patients }}</h5>
+                    <p class="card-text">Всего пациентов</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title">{{ report.summary.total_prescriptions }}</h5>
+                    <p class="card-text">Всего назначений</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title">{{ report.summary.total_dispensings }}</h5>
+                    <p class="card-text">Всего выдач</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title">{{ "%.2f"|format(report.summary.total_cost) }} ₽</h5>
+                    <p class="card-text">Общая стоимость</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Кнопка экспорта -->
+    <div class="mb-3">
+        <a href="{{ url_for('export_patient_report', 
+                           start_date=filters.start_date if filters else '', 
+                           end_date=filters.end_date if filters else '',
+                           patient_id=filters.patient_id if filters else '') }}" 
+           class="btn btn-success">
+            <i class="fas fa-download"></i> Экспорт в CSV
+        </a>
+    </div>
+
+    <!-- Таблица с данными -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">Детальная информация по пациентам</h5>
+        </div>
+        <div class="card-body">
+            {% if report.patients %}
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>ФИО</th>
+                            <th>Год рождения</th>
+                            <th>Диагноз</th>
+                            <th>Лечащий врач</th>
+                            <th>Назначений</th>
+                            <th>Выдач</th>
+                            <th>Назначено упаковок</th>
+                            <th>Выдано упаковок</th>
+                            <th>Общая стоимость</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for patient in report.patients %}
+                        <tr>
+                            <td>{{ patient.fio }}</td>
+                            <td>{{ patient.birth_year }}</td>
+                            <td>{{ patient.diagnosis }}</td>
+                            <td>{{ patient.attending_doctor }}</td>
+                            <td>{{ patient.total_prescriptions }}</td>
+                            <td>{{ patient.total_dispensings }}</td>
+                            <td>{{ patient.total_prescribed_packs }}</td>
+                            <td>{{ patient.total_dispensed_packs }}</td>
+                            <td>{{ "%.2f"|format(patient.total_cost) }} ₽</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle"></i> Нет данных для отображения. Попробуйте изменить фильтры.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="mt-3">
+        <small class="text-muted">Отчёт сформирован: {{ report.generated_at }}</small>
+    </div>
+    {% else %}
+    <div class="alert alert-info">
+        <i class="fas fa-info-circle"></i> Выберите параметры и нажмите "Сформировать" для создания отчёта.
+    </div>
+    {% endif %}
+</div>
+
+<script>
+function setDateRange(startDate, endDate) {
+    document.getElementById('start_date').value = startDate;
+    document.getElementById('end_date').value = endDate;
+}
+</script>
+{% endblock %}
+

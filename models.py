@@ -74,20 +74,22 @@ class Medicine:
         return [Medicine(medicine_id=row["medicine_id"], smmn_node_code=row["smmn_node_code"], section=row["section"], standardized_mnn=row["standardized_mnn"], trade_name_vk=row["trade_name_vk"], standardized_dosage_form=row["standardized_dosage_form"], standardized_dosage=row["standardized_dosage"], characteristic=row["characteristic"], packaging=row["packaging"], price=row["price"]) for row in rows]
 
 class Prescription:
-    def __init__(self, prescription_id=None, patient_id=None, medicine_id=None, prescription_date=None, quantity_packs=None):
+    def __init__(self, prescription_id=None, patient_id=None, medicine_id=None, prescription_date=None, quantity_packs=None, daily_dose=None, treatment_days=None):
         self.prescription_id = prescription_id
         self.patient_id = patient_id
         self.medicine_id = medicine_id
         self.prescription_date = prescription_date
         self.quantity_packs = quantity_packs
+        self.daily_dose = daily_dose
+        self.treatment_days = treatment_days
 
     def save(self):
         if self.prescription_id is None:
-            query = "INSERT INTO prescriptions (patient_id, medicine_id, prescription_date, quantity_packs) VALUES (?, ?, ?, ?)"
-            execute_update(query, (self.patient_id, self.medicine_id, self.prescription_date, self.quantity_packs))
+            query = "INSERT INTO prescriptions (patient_id, medicine_id, prescription_date, quantity_packs, daily_dose, treatment_days) VALUES (?, ?, ?, ?, ?, ?)"
+            execute_update(query, (self.patient_id, self.medicine_id, self.prescription_date, self.quantity_packs, self.daily_dose, self.treatment_days))
         else:
-            query = "UPDATE prescriptions SET patient_id = ?, medicine_id = ?, prescription_date = ?, quantity_packs = ? WHERE prescription_id = ?"
-            execute_update(query, (self.patient_id, self.medicine_id, self.prescription_date, self.quantity_packs, self.prescription_id))
+            query = "UPDATE prescriptions SET patient_id = ?, medicine_id = ?, prescription_date = ?, quantity_packs = ?, daily_dose = ?, treatment_days = ? WHERE prescription_id = ?"
+            execute_update(query, (self.patient_id, self.medicine_id, self.prescription_date, self.quantity_packs, self.daily_dose, self.treatment_days, self.prescription_id))
 
     def delete(self):
         query = "DELETE FROM prescriptions WHERE prescription_id = ?"
@@ -98,14 +100,21 @@ class Prescription:
         query = "SELECT * FROM prescriptions WHERE prescription_id = ?"
         row = fetch_one(query, (prescription_id,))
         if row:
-            return Prescription(prescription_id=row["prescription_id"], patient_id=row["patient_id"], medicine_id=row["medicine_id"], prescription_date=row["prescription_date"], quantity_packs=row["quantity_packs"])
+            daily_dose = row["daily_dose"] if "daily_dose" in row.keys() else None
+            treatment_days = row["treatment_days"] if "treatment_days" in row.keys() else None
+            return Prescription(prescription_id=row["prescription_id"], patient_id=row["patient_id"], medicine_id=row["medicine_id"], prescription_date=row["prescription_date"], quantity_packs=row["quantity_packs"], daily_dose=daily_dose, treatment_days=treatment_days)
         return None
 
     @staticmethod
     def get_all():
         query = "SELECT * FROM prescriptions"
         rows = fetch_all(query)
-        return [Prescription(prescription_id=row["prescription_id"], patient_id=row["patient_id"], medicine_id=row["medicine_id"], prescription_date=row["prescription_date"], quantity_packs=row["quantity_packs"]) for row in rows]
+        result = []
+        for row in rows:
+            daily_dose = row["daily_dose"] if "daily_dose" in row.keys() else None
+            treatment_days = row["treatment_days"] if "treatment_days" in row.keys() else None
+            result.append(Prescription(prescription_id=row["prescription_id"], patient_id=row["patient_id"], medicine_id=row["medicine_id"], prescription_date=row["prescription_date"], quantity_packs=row["quantity_packs"], daily_dose=daily_dose, treatment_days=treatment_days))
+        return result
 
 class Dispensing:
     def __init__(self, dispensing_id=None, patient_id=None, medicine_id=None, dispensing_date=None, quantity_packs=None):

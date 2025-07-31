@@ -1,0 +1,273 @@
+{% extends "base.html" %}
+
+{% block title %}Финансовый отчёт - Медицинская информационная система{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2 class="mb-4">Финансовый отчёт</h2>
+
+    <!-- Форма фильтров -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Фильтры отчёта</h5>
+        </div>
+        <div class="card-body">
+            <form method="POST">
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label for="start_date" class="form-label">Дата начала</label>
+                            <input type="date" class="form-control" id="start_date" name="start_date" 
+                                   value="{% if filters %}{{ filters.start_date }}{% endif %}">
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label for="end_date" class="form-label">Дата окончания</label>
+                            <input type="date" class="form-control" id="end_date" name="end_date" 
+                                   value="{% if filters %}{{ filters.end_date }}{% endif %}">
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label class="form-label">&nbsp;</label>
+                            <button type="submit" class="btn btn-primary d-block w-100">Сформировать</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Быстрые фильтры по датам -->
+                <div class="row">
+                    <div class="col-12">
+                        <small class="text-muted">Быстрый выбор периода:</small>
+                        {% for key, preset in date_presets.items() %}
+                        <button type="button" class="btn btn-sm btn-outline-secondary ms-1" 
+                                onclick="setDateRange('{{ preset.start }}', '{{ preset.end }}')">
+                            {{ preset.label }}
+                        </button>
+                        {% endfor %}
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {% if report %}
+    <!-- Сводная информация -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title">{{ "%.2f"|format(report.summary.total_revenue) }} ₽</h5>
+                    <p class="card-text">Общая выручка</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title">{{ report.summary.total_dispensings }}</h5>
+                    <p class="card-text">Всего выдач</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title">{{ "%.2f"|format(report.summary.avg_daily_revenue) }} ₽</h5>
+                    <p class="card-text">Средняя выручка в день</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title">{{ "%.2f"|format(report.summary.avg_dispensing_value) }} ₽</h5>
+                    <p class="card-text">Средняя стоимость выдачи</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Кнопка экспорта -->
+    <div class="mb-3">
+        <a href="{{ url_for('export_financial_report', 
+                           start_date=filters.start_date if filters else '', 
+                           end_date=filters.end_date if filters else '') }}" 
+           class="btn btn-success">
+            <i class="fas fa-download"></i> Экспорт в CSV
+        </a>
+    </div>
+
+    <!-- График выручки по дням -->
+    {% if report.daily_revenue %}
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Выручка по дням</h5>
+        </div>
+        <div class="card-body">
+            <canvas id="revenueChart" width="400" height="100"></canvas>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Топ препаратов по доходам -->
+    {% if report.top_medicines %}
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Топ-10 препаратов по доходам</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Препарат</th>
+                            <th>МНН</th>
+                            <th>Цена за упаковку</th>
+                            <th>Продано упаковок</th>
+                            <th>Общий доход</th>
+                            <th>Уникальных пациентов</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for medicine in report.top_medicines %}
+                        <tr>
+                            <td>{{ medicine.trade_name_vk }}</td>
+                            <td>{{ medicine.standardized_mnn }}</td>
+                            <td>{{ "%.2f"|format(medicine.price) }} ₽</td>
+                            <td>{{ medicine.total_packs_sold }}</td>
+                            <td>{{ "%.2f"|format(medicine.total_revenue) }} ₽</td>
+                            <td>{{ medicine.unique_patients }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Статистика по врачам -->
+    {% if report.doctors_statistics %}
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Статистика по лечащим врачам</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Лечащий врач</th>
+                            <th>Количество выдач</th>
+                            <th>Количество пациентов</th>
+                            <th>Общая выручка</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for doctor in report.doctors_statistics %}
+                        <tr>
+                            <td>{{ doctor.attending_doctor }}</td>
+                            <td>{{ doctor.dispensings_count }}</td>
+                            <td>{{ doctor.patients_count }}</td>
+                            <td>{{ "%.2f"|format(doctor.total_revenue) }} ₽</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Детальная таблица выручки по дням -->
+    {% if report.daily_revenue %}
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">Детальная выручка по дням</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Дата</th>
+                            <th>Количество выдач</th>
+                            <th>Выручка за день</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for day in report.daily_revenue %}
+                        <tr>
+                            <td>{{ day.dispensing_date }}</td>
+                            <td>{{ day.dispensings_count }}</td>
+                            <td>{{ "%.2f"|format(day.daily_revenue) }} ₽</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="mt-3">
+        <small class="text-muted">Отчёт сформирован: {{ report.generated_at }}</small>
+    </div>
+    {% else %}
+    <div class="alert alert-info">
+        <i class="fas fa-info-circle"></i> Выберите параметры и нажмите "Сформировать" для создания отчёта.
+    </div>
+    {% endif %}
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+function setDateRange(startDate, endDate) {
+    document.getElementById('start_date').value = startDate;
+    document.getElementById('end_date').value = endDate;
+}
+
+{% if report and report.daily_revenue %}
+// График выручки по дням
+const ctx = document.getElementById('revenueChart').getContext('2d');
+const revenueChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+        labels: [{% for day in report.daily_revenue %}'{{ day.dispensing_date }}'{% if not loop.last %},{% endif %}{% endfor %}],
+        datasets: [{
+            label: 'Выручка (₽)',
+            data: [{% for day in report.daily_revenue %}{{ day.daily_revenue }}{% if not loop.last %},{% endif %}{% endfor %}],
+            borderColor: 'rgb(75, 192, 192)',
+            backgroundColor: 'rgba(75, 192, 192, 0.2)',
+            tension: 0.1
+        }]
+    },
+    options: {
+        responsive: true,
+        scales: {
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    callback: function(value, index, values) {
+                        return value.toLocaleString('ru-RU') + ' ₽';
+                    }
+                }
+            }
+        },
+        plugins: {
+            tooltip: {
+                callbacks: {
+                    label: function(context) {
+                        return 'Выручка: ' + context.parsed.y.toLocaleString('ru-RU') + ' ₽';
+                    }
+                }
+            }
+        }
+    }
+});
+{% endif %}
+</script>
+{% endblock %}
+

@@ -166,6 +166,8 @@ def init_routes(app):
             try:
                 patient_id = int(request.form["patient_id"])
                 medicine_id = int(request.form["medicine_id"])
+                daily_dose = float(request.form.get("daily_dose", 0)) if request.form.get("daily_dose") else None
+                treatment_days = int(request.form.get("treatment_days", 0)) if request.form.get("treatment_days") else None
                 quantity_packs = float(request.form["quantity_packs"])
                 
                 # Валидация
@@ -180,7 +182,9 @@ def init_routes(app):
                         patient_id=patient_id,
                         medicine_id=medicine_id,
                         prescription_date=request.form["prescription_date"],
-                        quantity_packs=quantity_packs
+                        quantity_packs=quantity_packs,
+                        daily_dose=daily_dose,
+                        treatment_days=treatment_days
                     )
                     prescription.save()
                     flash("Назначение успешно добавлено", "success")
@@ -206,6 +210,8 @@ def init_routes(app):
                 prescription.medicine_id = int(request.form["medicine_id"])
                 prescription.prescription_date = request.form["prescription_date"]
                 prescription.quantity_packs = float(request.form["quantity_packs"])
+                prescription.daily_dose = float(request.form.get("daily_dose", 0)) if request.form.get("daily_dose") else None
+                prescription.treatment_days = int(request.form.get("treatment_days", 0)) if request.form.get("treatment_days") else None
                 prescription.save()
                 flash("Назначение успешно обновлено", "success")
                 return redirect(url_for("prescriptions"))
@@ -319,9 +325,19 @@ def init_routes(app):
     @app.route("/reports")
     def reports():
         """Страница отчётов."""
+        from reports_generator import ReportsGenerator
+        
+        # Получаем предустановленные диапазоны дат
+        date_presets = ReportsGenerator.get_date_range_presets()
+        
+        # Базовый отчет по препаратам (существующий)
         report = BusinessLogic.generate_medicine_report()
         stats = BusinessLogic.get_medicine_usage_statistics()
-        return render_template("reports.html", report=report, stats=stats)
+        
+        return render_template("reports.html", 
+                             report=report, 
+                             stats=stats,
+                             date_presets=date_presets)
     
     @app.route("/reports/export/medicines")
     def export_medicine_report():
@@ -330,30 +346,182 @@ def init_routes(app):
         
         response = make_response(csv_content)
         response.headers["Content-Type"] = "text/csv; charset=utf-8"
-        response.headers["Content-Disposition"] = f"attachment; filename=medicine_report_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv"
+        response.headers["Content-Disposition"] = f"attachment; filename=medicine_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
         
         return response
     
-    @app.route("/reports/patient")
+    @app.route("/reports/patient", methods=["GET", "POST"])
     def patient_report():
         """Отчёт по пациентам."""
-        # Заглушка для будущей реализации
-        flash("Отчёт по пациентам находится в разработке", "info")
-        return redirect(url_for("reports"))
+        from reports_generator import ReportsGenerator
+        
+        if request.method == "POST":
+            start_date = request.form.get("start_date")
+            end_date = request.form.get("end_date")
+            patient_id = request.form.get("patient_id")
+            patient_id = int(patient_id) if patient_id else None
+            
+            report_data = ReportsGenerator.generate_patient_report(
+                start_date=start_date,
+                end_date=end_date,
+                patient_id=patient_id
+            )
+            
+            patients = Patient.get_all()
+            date_presets = ReportsGenerator.get_date_range_presets()
+            
+            return render_template("patient_report.html", 
+                                 report=report_data,
+                                 patients=patients,
+                                 date_presets=date_presets,
+                                 filters={
+                                     'start_date': start_date,
+                                     'end_date': end_date,
+                                     'patient_id': patient_id
+                                 })
+        
+        patients = Patient.get_all()
+        date_presets = ReportsGenerator.get_date_range_presets()
+        
+        return render_template("patient_report.html", 
+                             patients=patients,
+                             date_presets=date_presets)
     
-    @app.route("/reports/dispensing")
+    @app.route("/reports/dispensing", methods=["GET", "POST"])
     def dispensing_report():
         """Отчёт по выдачам."""
-        # Заглушка для будущей реализации
-        flash("Отчёт по выдачам находится в разработке", "info")
-        return redirect(url_for("reports"))
+        from reports_generator import ReportsGenerator
+        
+        if request.method == "POST":
+            start_date = request.form.get("start_date")
+            end_date = request.form.get("end_date")
+            medicine_id = request.form.get("medicine_id")
+            medicine_id = int(medicine_id) if medicine_id else None
+            
+            report_data = ReportsGenerator.generate_dispensing_report(
+                start_date=start_date,
+                end_date=end_date,
+                medicine_id=medicine_id
+            )
+            
+            medicines = Medicine.get_all()
+            date_presets = ReportsGenerator.get_date_range_presets()
+            
+            return render_template("dispensing_report.html", 
+                                 report=report_data,
+                                 medicines=medicines,
+                                 date_presets=date_presets,
+                                 filters={
+                                     'start_date': start_date,
+                                     'end_date': end_date,
+                                     'medicine_id': medicine_id
+                                 })
+        
+        medicines = Medicine.get_all()
+        date_presets = ReportsGenerator.get_date_range_presets()
+        
+        return render_template("dispensing_report.html", 
+                             medicines=medicines,
+                             date_presets=date_presets)
     
-    @app.route("/reports/financial")
+    @app.route("/reports/financial", methods=["GET", "POST"])
     def financial_report():
         """Финансовый отчёт."""
-        # Заглушка для будущей реализации
-        flash("Финансовый отчёт находится в разработке", "info")
-        return redirect(url_for("reports"))
+        from reports_generator import ReportsGenerator
+        
+        if request.method == "POST":
+            start_date = request.form.get("start_date")
+            end_date = request.form.get("end_date")
+            
+            report_data = ReportsGenerator.generate_financial_report(
+                start_date=start_date,
+                end_date=end_date
+            )
+            
+            date_presets = ReportsGenerator.get_date_range_presets()
+            
+            return render_template("financial_report.html", 
+                                 report=report_data,
+                                 date_presets=date_presets,
+                                 filters={
+                                     'start_date': start_date,
+                                     'end_date': end_date
+                                 })
+        
+        date_presets = ReportsGenerator.get_date_range_presets()
+        
+        return render_template("financial_report.html", 
+                             date_presets=date_presets)
+    
+    # Экспорт отчетов в CSV
+    @app.route("/reports/export/patient")
+    def export_patient_report():
+        """Экспорт отчёта по пациентам в CSV."""
+        from reports_generator import ReportsGenerator
+        
+        start_date = request.args.get("start_date")
+        end_date = request.args.get("end_date")
+        patient_id = request.args.get("patient_id")
+        patient_id = int(patient_id) if patient_id else None
+        
+        report_data = ReportsGenerator.generate_patient_report(
+            start_date=start_date,
+            end_date=end_date,
+            patient_id=patient_id
+        )
+        
+        csv_content = ReportsGenerator.export_report_to_csv(report_data, 'patient')
+        
+        response = make_response(csv_content)
+        response.headers["Content-Type"] = "text/csv; charset=utf-8"
+        response.headers["Content-Disposition"] = f"attachment; filename=patient_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+        
+        return response
+    
+    @app.route("/reports/export/dispensing")
+    def export_dispensing_report():
+        """Экспорт отчёта по выдачам в CSV."""
+        from reports_generator import ReportsGenerator
+        
+        start_date = request.args.get("start_date")
+        end_date = request.args.get("end_date")
+        medicine_id = request.args.get("medicine_id")
+        medicine_id = int(medicine_id) if medicine_id else None
+        
+        report_data = ReportsGenerator.generate_dispensing_report(
+            start_date=start_date,
+            end_date=end_date,
+            medicine_id=medicine_id
+        )
+        
+        csv_content = ReportsGenerator.export_report_to_csv(report_data, 'dispensing')
+        
+        response = make_response(csv_content)
+        response.headers["Content-Type"] = "text/csv; charset=utf-8"
+        response.headers["Content-Disposition"] = f"attachment; filename=dispensing_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+        
+        return response
+    
+    @app.route("/reports/export/financial")
+    def export_financial_report():
+        """Экспорт финансового отчёта в CSV."""
+        from reports_generator import ReportsGenerator
+        
+        start_date = request.args.get("start_date")
+        end_date = request.args.get("end_date")
+        
+        report_data = ReportsGenerator.generate_financial_report(
+            start_date=start_date,
+            end_date=end_date
+        )
+        
+        csv_content = ReportsGenerator.export_report_to_csv(report_data, 'financial')
+        
+        response = make_response(csv_content)
+        response.headers["Content-Type"] = "text/csv; charset=utf-8"
+        response.headers["Content-Disposition"] = f"attachment; filename=financial_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+        
+        return response
     
     # API маршруты для AJAX запросов
     @app.route("/api/patient/<int:patient_id>/remaining_need/<int:medicine_id>")
@@ -367,6 +535,40 @@ def init_routes(app):
         """API для получения сводной информации по пациенту."""
         summary = BusinessLogic.get_patient_medicine_summary(patient_id)
         return {"summary": summary}
+    
+    @app.route("/api/calculate_packages", methods=["POST"])
+    def api_calculate_packages():
+        """API для расчета необходимого количества упаковок."""
+        from dosage_calculator import DosageCalculator
+        
+        try:
+            data = request.get_json()
+            medicine_id = int(data.get('medicine_id'))
+            daily_dose = float(data.get('daily_dose'))
+            treatment_days = int(data.get('treatment_days'))
+            
+            # Валидация входных данных
+            is_valid, error_message = DosageCalculator.validate_dosage_input(daily_dose, treatment_days)
+            if not is_valid:
+                return {"success": False, "error": error_message}, 400
+            
+            # Расчет количества упаковок
+            result = DosageCalculator.calculate_required_packages(medicine_id, daily_dose, treatment_days)
+            return result
+            
+        except Exception as e:
+            return {"success": False, "error": str(e)}, 500
+    
+    @app.route("/api/medicine/<int:medicine_id>/dosage_recommendations")
+    def api_dosage_recommendations(medicine_id):
+        """API для получения рекомендаций по дозировке препарата."""
+        from dosage_calculator import DosageCalculator
+        
+        recommendations = DosageCalculator.get_dosage_recommendations(medicine_id)
+        if recommendations:
+            return {"success": True, "recommendations": recommendations}
+        else:
+            return {"success": False, "error": "Препарат не найден"}, 404
     
     return app
 

@@ -1,0 +1,208 @@
+{% extends "base.html" %}
+
+{% block title %}Отчёт по выдачам - Медицинская информационная система{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2 class="mb-4">Отчёт по выдачам</h2>
+
+    <!-- Форма фильтров -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Фильтры отчёта</h5>
+        </div>
+        <div class="card-body">
+            <form method="POST">
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="mb-3">
+                            <label for="start_date" class="form-label">Дата начала</label>
+                            <input type="date" class="form-control" id="start_date" name="start_date" 
+                                   value="{% if filters %}{{ filters.start_date }}{% endif %}">
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="mb-3">
+                            <label for="end_date" class="form-label">Дата окончания</label>
+                            <input type="date" class="form-control" id="end_date" name="end_date" 
+                                   value="{% if filters %}{{ filters.end_date }}{% endif %}">
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label for="medicine_id" class="form-label">Препарат</label>
+                            <select class="form-select" id="medicine_id" name="medicine_id">
+                                <option value="">Все препараты</option>
+                                {% for medicine in medicines %}
+                                <option value="{{ medicine.medicine_id }}" 
+                                        {% if filters and filters.medicine_id == medicine.medicine_id %}selected{% endif %}>
+                                    {{ medicine.trade_name_vk }} ({{ medicine.standardized_mnn }})
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="mb-3">
+                            <label class="form-label">&nbsp;</label>
+                            <button type="submit" class="btn btn-primary d-block w-100">Сформировать</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Быстрые фильтры по датам -->
+                <div class="row">
+                    <div class="col-12">
+                        <small class="text-muted">Быстрый выбор периода:</small>
+                        {% for key, preset in date_presets.items() %}
+                        <button type="button" class="btn btn-sm btn-outline-secondary ms-1" 
+                                onclick="setDateRange('{{ preset.start }}', '{{ preset.end }}')">
+                            {{ preset.label }}
+                        </button>
+                        {% endfor %}
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {% if report %}
+    <!-- Сводная информация -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title">{{ report.summary.total_dispensings }}</h5>
+                    <p class="card-text">Всего выдач</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title">{{ "%.1f"|format(report.summary.total_packs) }}</h5>
+                    <p class="card-text">Всего упаковок</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title">{{ "%.2f"|format(report.summary.total_revenue) }} ₽</h5>
+                    <p class="card-text">Общая выручка</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Кнопка экспорта -->
+    <div class="mb-3">
+        <a href="{{ url_for('export_dispensing_report', 
+                           start_date=filters.start_date if filters else '', 
+                           end_date=filters.end_date if filters else '',
+                           medicine_id=filters.medicine_id if filters else '') }}" 
+           class="btn btn-success">
+            <i class="fas fa-download"></i> Экспорт в CSV
+        </a>
+    </div>
+
+    <!-- Статистика по препаратам -->
+    {% if report.medicine_statistics %}
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Статистика по препаратам</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Препарат</th>
+                            <th>МНН</th>
+                            <th>Количество выдач</th>
+                            <th>Всего упаковок</th>
+                            <th>Общая выручка</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for medicine in report.medicine_statistics %}
+                        <tr>
+                            <td>{{ medicine.trade_name_vk }}</td>
+                            <td>{{ medicine.standardized_mnn }}</td>
+                            <td>{{ medicine.dispensing_count }}</td>
+                            <td>{{ "%.1f"|format(medicine.total_packs) }}</td>
+                            <td>{{ "%.2f"|format(medicine.total_revenue) }} ₽</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Детальная таблица выдач -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">Детальная информация по выдачам</h5>
+        </div>
+        <div class="card-body">
+            {% if report.dispensings %}
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Дата выдачи</th>
+                            <th>Пациент</th>
+                            <th>Диагноз</th>
+                            <th>Препарат</th>
+                            <th>МНН</th>
+                            <th>Дозировка</th>
+                            <th>Количество упаковок</th>
+                            <th>Цена за упаковку</th>
+                            <th>Общая стоимость</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for dispensing in report.dispensings %}
+                        <tr>
+                            <td>{{ dispensing.dispensing_date }}</td>
+                            <td>{{ dispensing.patient_name }}</td>
+                            <td>{{ dispensing.diagnosis }}</td>
+                            <td>{{ dispensing.medicine_name }}</td>
+                            <td>{{ dispensing.standardized_mnn }}</td>
+                            <td>{{ dispensing.standardized_dosage }} {{ dispensing.standardized_dosage_form }}</td>
+                            <td>{{ dispensing.quantity_packs }}</td>
+                            <td>{{ "%.2f"|format(dispensing.price) }} ₽</td>
+                            <td>{{ "%.2f"|format(dispensing.total_cost) }} ₽</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle"></i> Нет данных для отображения. Попробуйте изменить фильтры.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="mt-3">
+        <small class="text-muted">Отчёт сформирован: {{ report.generated_at }}</small>
+    </div>
+    {% else %}
+    <div class="alert alert-info">
+        <i class="fas fa-info-circle"></i> Выберите параметры и нажмите "Сформировать" для создания отчёта.
+    </div>
+    {% endif %}
+</div>
+
+<script>
+function setDateRange(startDate, endDate) {
+    document.getElementById('start_date').value = startDate;
+    document.getElementById('end_date').value = endDate;
+}
+</script>
+{% endblock %}
+

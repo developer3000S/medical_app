@@ -58,6 +58,8 @@ def init_db():
             medicine_id INTEGER NOT NULL,
             prescription_date DATE NOT NULL,
             quantity_packs REAL NOT NULL,
+            daily_dose REAL,
+            treatment_days INTEGER,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (patient_id) REFERENCES patients (patient_id),

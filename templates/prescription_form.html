@@ -10,7 +10,7 @@
         {% if prescription %}Редактирование назначения{% else %}Добавление назначения{% endif %}
     </h2>
 
-    <form method="POST">
+    <form method="POST" id="prescriptionForm">
         <div class="row">
             <div class="col-md-6">
                 <div class="mb-3">
@@ -33,6 +33,9 @@
                         <option value="">Выберите препарат</option>
                         {% for medicine in medicines %}
                         <option value="{{ medicine.medicine_id }}" 
+                                data-dosage="{{ medicine.standardized_dosage }}"
+                                data-packaging="{{ medicine.packaging }}"
+                                data-price="{{ medicine.price }}"
                                 {% if prescription and prescription.medicine_id == medicine.medicine_id %}selected{% endif %}>
                             {{ medicine.trade_name_vk }} ({{ medicine.standardized_mnn }}) - {{ medicine.price }} руб.
                         </option>
@@ -50,15 +53,54 @@
                            value="{% if prescription %}{{ prescription.prescription_date }}{% else %}{{ today }}{% endif %}" required>
                 </div>
             </div>
-            <div class="col-md-6">
+        </div>
+
+        <!-- Новые поля для дозировки -->
+        <div class="row">
+            <div class="col-md-4">
+                <div class="mb-3">
+                    <label for="daily_dose" class="form-label">Суточная доза (мг)</label>
+                    <input type="number" class="form-control" id="daily_dose" name="daily_dose" 
+                           step="0.1" min="0.1" 
+                           value="{% if prescription and prescription.daily_dose %}{{ prescription.daily_dose }}{% endif %}">
+                    <div class="form-text">Общая суточная доза препарата в миллиграммах</div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="mb-3">
+                    <label for="treatment_days" class="form-label">Количество дней приема</label>
+                    <input type="number" class="form-control" id="treatment_days" name="treatment_days" 
+                           min="1" max="365" 
+                           value="{% if prescription and prescription.treatment_days %}{{ prescription.treatment_days }}{% endif %}">
+                    <div class="form-text">Продолжительность курса лечения</div>
+                </div>
+            </div>
+            <div class="col-md-4">
                 <div class="mb-3">
                     <label for="quantity_packs" class="form-label">Количество упаковок</label>
                     <input type="number" class="form-control" id="quantity_packs" name="quantity_packs" 
                            step="0.1" min="0.1" 
                            value="{% if prescription %}{{ prescription.quantity_packs }}{% endif %}" required>
-                    <div class="form-text">Укажите количество упаковок препарата</div>
+                    <div class="form-text">
+                        <span id="calculation_info"></span>
+                        <button type="button" class="btn btn-sm btn-outline-primary mt-1" id="calculate_btn" style="display: none;">
+                            Рассчитать автоматически
+                        </button>
+                    </div>
                 </div>
             </div>
+        </div>
+
+        <!-- Информация о препарате -->
+        <div id="medicine_info" class="alert alert-info" style="display: none;">
+            <h6>Информация о препарате:</h6>
+            <div id="medicine_details"></div>
+        </div>
+
+        <!-- Результат расчета -->
+        <div id="calculation_result" class="alert alert-success" style="display: none;">
+            <h6>Результат расчета:</h6>
+            <div id="calculation_details"></div>
         </div>
 
         <div class="mb-3">
@@ -77,6 +119,136 @@ document.addEventListener("DOMContentLoaded", function() {
     const today = new Date().toISOString().split("T")[0];
     document.getElementById("prescription_date").value = today;
     {% endif %}
+
+    const medicineSelect = document.getElementById("medicine_id");
+    const dailyDoseInput = document.getElementById("daily_dose");
+    const treatmentDaysInput = document.getElementById("treatment_days");
+    const quantityPacksInput = document.getElementById("quantity_packs");
+    const calculateBtn = document.getElementById("calculate_btn");
+    const medicineInfo = document.getElementById("medicine_info");
+    const medicineDetails = document.getElementById("medicine_details");
+    const calculationResult = document.getElementById("calculation_result");
+    const calculationDetails = document.getElementById("calculation_details");
+    const calculationInfo = document.getElementById("calculation_info");
+
+    // Обработчик изменения препарата
+    medicineSelect.addEventListener("change", function() {
+        const selectedOption = this.options[this.selectedIndex];
+        if (selectedOption.value) {
+            const dosage = selectedOption.dataset.dosage;
+            const packaging = selectedOption.dataset.packaging;
+            const price = selectedOption.dataset.price;
+            
+            medicineDetails.innerHTML = `
+                <strong>Дозировка:</strong> ${dosage}<br>
+                <strong>Упаковка:</strong> ${packaging} шт.<br>
+                <strong>Цена:</strong> ${price} руб.
+            `;
+            medicineInfo.style.display = "block";
+            
+            // Загружаем рекомендации по дозировке
+            loadDosageRecommendations(selectedOption.value);
+        } else {
+            medicineInfo.style.display = "none";
+            calculationResult.style.display = "none";
+        }
+        updateCalculateButton();
+    });
+
+    // Обработчики изменения полей дозировки
+    dailyDoseInput.addEventListener("input", updateCalculateButton);
+    treatmentDaysInput.addEventListener("input", updateCalculateButton);
+
+    // Обработчик кнопки расчета
+    calculateBtn.addEventListener("click", function() {
+        calculatePackages();
+    });
+
+    function updateCalculateButton() {
+        const medicineId = medicineSelect.value;
+        const dailyDose = dailyDoseInput.value;
+        const treatmentDays = treatmentDaysInput.value;
+        
+        if (medicineId && dailyDose && treatmentDays) {
+            calculateBtn.style.display = "inline-block";
+            calculationInfo.textContent = "Можно рассчитать автоматически";
+        } else {
+            calculateBtn.style.display = "none";
+            calculationInfo.textContent = "Укажите препарат, суточную дозу и количество дней для автоматического расчета";
+        }
+    }
+
+    function loadDosageRecommendations(medicineId) {
+        fetch(`/api/medicine/${medicineId}/dosage_recommendations`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.recommendations.suggested_daily_doses.length > 0) {
+                    let recommendationsHtml = "<strong>Рекомендуемые дозировки:</strong><br>";
+                    data.recommendations.suggested_daily_doses.forEach(rec => {
+                        recommendationsHtml += `<button type="button" class="btn btn-sm btn-outline-secondary me-1 mb-1" 
+                                                onclick="setDailyDose(${rec.dose})">${rec.description} (${rec.dose} мг)</button>`;
+                    });
+                    medicineDetails.innerHTML += "<br>" + recommendationsHtml;
+                }
+            })
+            .catch(error => console.error("Ошибка загрузки рекомендаций:", error));
+    }
+
+    function calculatePackages() {
+        const medicineId = medicineSelect.value;
+        const dailyDose = parseFloat(dailyDoseInput.value);
+        const treatmentDays = parseInt(treatmentDaysInput.value);
+
+        if (!medicineId || !dailyDose || !treatmentDays) {
+            alert("Пожалуйста, заполните все поля для расчета");
+            return;
+        }
+
+        fetch("/api/calculate_packages", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                medicine_id: medicineId,
+                daily_dose: dailyDose,
+                treatment_days: treatmentDays
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                quantityPacksInput.value = data.packages_needed;
+                
+                calculationDetails.innerHTML = `
+                    <strong>Расчет для препарата:</strong> ${data.medicine_name}<br>
+                    <strong>Общая необходимая доза:</strong> ${data.total_dose_needed.toFixed(1)} мг<br>
+                    <strong>Доза в одной упаковке:</strong> ${data.dose_per_package.toFixed(1)} мг (${data.units_per_package} шт. по ${data.dose_per_unit.toFixed(1)} мг)<br>
+                    <strong>Точное количество упаковок:</strong> ${data.packages_needed_exact.toFixed(2)}<br>
+                    <strong>Необходимо упаковок:</strong> ${data.packages_needed} шт.
+                `;
+                calculationResult.style.display = "block";
+            } else {
+                alert("Ошибка расчета: " + data.error);
+            }
+        })
+        .catch(error => {
+            console.error("Ошибка:", error);
+            alert("Произошла ошибка при расчете");
+        });
+    }
+
+    // Функция для установки суточной дозы из рекомендаций
+    window.setDailyDose = function(dose) {
+        dailyDoseInput.value = dose;
+        updateCalculateButton();
+    };
+
+    // Инициализация при загрузке страницы
+    if (medicineSelect.value) {
+        medicineSelect.dispatchEvent(new Event('change'));
+    }
+    updateCalculateButton();
 });
 </script>
 {% endblock %}
