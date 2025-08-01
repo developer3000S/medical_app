@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Пациенты - Медицинская система</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-md-12">
+                <h1>Список пациентов</h1>
+                
+                <!-- Форма поиска и настроек пагинации -->
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <form method="GET" class="d-flex">
+                            <input type="text" name="search" class="form-control me-2" 
+                                   placeholder="Поиск по ФИО, диагнозу или врачу" 
+                                   value="{{ search }}">
+                            <button type="submit" class="btn btn-outline-primary">Найти</button>
+                            {% if search %}
+                                <a href="{{ url_for('patients') }}" class="btn btn-outline-secondary ms-2">Сбросить</a>
+                            {% endif %}
+                        </form>
+                    </div>
+                    <div class="col-md-3">
+                        <form method="GET" class="d-flex">
+                            {% if search %}
+                                <input type="hidden" name="search" value="{{ search }}">
+                            {% endif %}
+                            <select name="per_page" class="form-select me-2" onchange="this.form.submit()">
+                                <option value="10" {% if pagination.per_page == 10 %}selected{% endif %}>10 на странице</option>
+                                <option value="25" {% if pagination.per_page == 25 %}selected{% endif %}>25 на странице</option>
+                                <option value="50" {% if pagination.per_page == 50 %}selected{% endif %}>50 на странице</option>
+                                <option value="100" {% if pagination.per_page == 100 %}selected{% endif %}>100 на странице</option>
+                            </select>
+                        </form>
+                    </div>
+                    <div class="col-md-3">
+                        <a href="{{ url_for('add_patient') }}" class="btn btn-success">Добавить пациента</a>
+                    </div>
+                </div>
+
+                <!-- Информация о результатах -->
+                <div class="mb-3">
+                    <small class="text-muted">
+                        Показано {{ pagination.items|length }} из {{ pagination.total }} записей
+                        (страница {{ pagination.page }} из {{ pagination.total_pages }})
+                    </small>
+                </div>
+
+                <!-- Таблица пациентов -->
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>ID</th>
+                                <th>ФИО</th>
+                                <th>Год рождения</th>
+                                <th>Диагноз</th>
+                                <th>Лечащий врач</th>
+                                <th>Действия</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for patient in patients %}
+                            <tr>
+                                <td>{{ patient.patient_id }}</td>
+                                <td>{{ patient.fio }}</td>
+                                <td>{{ patient.birth_year }}</td>
+                                <td>{{ patient.diagnosis }}</td>
+                                <td>{{ patient.attending_doctor }}</td>
+                                <td>
+                                    <a href="{{ url_for('edit_patient', patient_id=patient.patient_id) }}" 
+                                       class="btn btn-sm btn-outline-primary">Редактировать</a>
+                                    <form method="POST" action="{{ url_for('delete_patient', patient_id=patient.patient_id) }}" 
+                                          style="display: inline;" 
+                                          onsubmit="return confirm('Вы уверены, что хотите удалить этого пациента?')">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger">Удалить</button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="6" class="text-center">
+                                    {% if search %}
+                                        Пациенты не найдены по запросу "{{ search }}"
+                                    {% else %}
+                                        Нет данных о пациентах
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Пагинация -->
+                {% if pagination.total_pages > 1 %}
+                <nav aria-label="Навигация по страницам">
+                    <ul class="pagination justify-content-center">
+                        <!-- Первая страница -->
+                        {% if pagination.page > 1 %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('patients', page=1, per_page=pagination.per_page, search=search) }}">
+                                    &laquo;&laquo; Первая
+                                </a>
+                            </li>
+                        {% endif %}
+
+                        <!-- Предыдущая страница -->
+                        {% if pagination.has_prev %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('patients', page=pagination.prev_num, per_page=pagination.per_page, search=search) }}">
+                                    &laquo; Предыдущая
+                                </a>
+                            </li>
+                        {% endif %}
+
+                        <!-- Номера страниц -->
+                        {% for page_num in range(max(1, pagination.page - 2), min(pagination.total_pages + 1, pagination.page + 3)) %}
+                            {% if page_num == pagination.page %}
+                                <li class="page-item active">
+                                    <span class="page-link">{{ page_num }}</span>
+                                </li>
+                            {% else %}
+                                <li class="page-item">
+                                    <a class="page-link" href="{{ url_for('patients', page=page_num, per_page=pagination.per_page, search=search) }}">
+                                        {{ page_num }}
+                                    </a>
+                                </li>
+                            {% endif %}
+                        {% endfor %}
+
+                        <!-- Следующая страница -->
+                        {% if pagination.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('patients', page=pagination.next_num, per_page=pagination.per_page, search=search) }}">
+                                    Следующая &raquo;
+                                </a>
+                            </li>
+                        {% endif %}
+
+                        <!-- Последняя страница -->
+                        {% if pagination.page < pagination.total_pages %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('patients', page=pagination.total_pages, per_page=pagination.per_page, search=search) }}">
+                                    Последняя &raquo;&raquo;
+                                </a>
+                            </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+                {% endif %}
+
+                <!-- Дополнительные действия -->
+                <div class="mt-4">
+                    <a href="{{ url_for('import_patients') }}" class="btn btn-info">Импорт из CSV</a>
+                    <a href="{{ url_for('export_data', table_name='patients') }}" class="btn btn-secondary">Экспорт в CSV</a>
+                    <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">На главную</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
+
